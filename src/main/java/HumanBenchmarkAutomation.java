@@ -1,6 +1,7 @@
 import org.openqa.selenium.By;
 import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.interactions.Actions;
 import org.openqa.selenium.support.ui.ExpectedConditions;
@@ -20,9 +21,8 @@ public class HumanBenchmarkAutomation {
       driver.manage().window().maximize();
       driver.get("https://humanbenchmark.com");
       BenchmarkTest[] tests = {
-        new Chimp(1),
-        new ReactionTime(),
         new SequenceMemory(),
+        new ReactionTime(),
         new AimTrainer(),
         new NumberMemory(1),
         new VerbalMemory(1),
@@ -61,13 +61,26 @@ public class HumanBenchmarkAutomation {
 
     @Override
     public void perform() {
-
+      var button = By.xpath("//*[@data-test=\"true\"]//button");
+      driver.findElement(button).click();
+      var wait = new FluentWait<>(driver)
+        .withTimeout(Duration.ofSeconds(10))
+        .pollingEvery(Duration.ofMillis(150))
+        .ignoring(Exception.class);
+      var activeSquare = By.xpath("//*[@data-test=\"true\"]//*[@class=\"square active\"]");
+      for (long i = 1;; i++) {
+        List<WebElement> squares = new ArrayList<>();
+        for (int j = 0; j < i; j++) {
+          wait.until(ExpectedConditions.presenceOfElementLocated(activeSquare));
+          squares.add(driver.findElement(activeSquare));
+        }
+        for (var s : squares) new Actions(driver).moveToElement(s).click().perform();
+      }
     }
   }
 
   public static class VisualMemory implements BenchmarkTest {
     private final long max;
-    private long lives = 3;
     VisualMemory() {
       max = Long.MAX_VALUE;
     }
@@ -81,22 +94,25 @@ public class HumanBenchmarkAutomation {
 
     @Override
     public void perform() {
+      long lives = 3;
       var button = By.xpath("//*[@data-test=\"true\"]//button");
       driver.findElement(button).click();
       var active = By.xpath("//*[@data-test=\"true\"]//*[contains(@class, \"active\")]");
+      var notActive = By.xpath("//*[@data-test=\"true\"]//*[contains(@class, \"eut2yre1\")][not(contains(@class, \"active\"))]");
       var wait = new FluentWait<>(driver)
         .withTimeout(Duration.ofSeconds(10))
         .pollingEvery(Duration.ofMillis(100))
         .ignoring(Exception.class);
       try {
-        for (long i = 0;; i++) {
+        for (long i = 1;; i++) {
           wait.until(ExpectedConditions.presenceOfElementLocated(active));
-          var squares = driver.findElements(active);
-          if (i > max) {
-            var allSquares = driver.findElements(By.className("eut2yre1"));
-          }
+          var squares = driver.findElements(i > max ? notActive : active);
           wait.until(ExpectedConditions.not(ExpectedConditions.presenceOfAllElementsLocatedBy(active)));
-          for (var s : squares) new Actions(driver).moveToElement(s).click().perform();
+          if (i > max) {
+            for (int j = 0; j < 3; j++) new Actions(driver).moveToElement(squares.get(j)).click().perform();
+            lives--;
+            if (lives <= 0) break;
+          } else for (var s : squares) new Actions(driver).moveToElement(s).click().perform();
           wait.until(ExpectedConditions.not(ExpectedConditions.presenceOfAllElementsLocatedBy(active)));
         }
       } catch (Exception ignored) {}
@@ -105,7 +121,6 @@ public class HumanBenchmarkAutomation {
 
   public static class Chimp implements BenchmarkTest {
     private final long max;
-    private int lives = 3;
     Chimp() {
       max = 40;
     }
@@ -119,6 +134,7 @@ public class HumanBenchmarkAutomation {
 
     @Override
     public void perform() {
+      long lives = 3;
       var button = By.xpath("//*[@data-test=\"true\"]//button");
       for (long i = 4; i <= 40; i++) {
         driver.findElement(button).click();
