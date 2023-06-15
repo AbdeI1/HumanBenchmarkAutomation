@@ -21,13 +21,13 @@ public class HumanBenchmarkAutomation {
       driver.manage().window().maximize();
       driver.get("https://humanbenchmark.com");
       BenchmarkTest[] tests = {
-        new SequenceMemory(6),
         new ReactionTime(),
+        new SequenceMemory(-1),
         new AimTrainer(),
-        new NumberMemory(1),
-        new VerbalMemory(1),
-        new Chimp(1),
-        new VisualMemory(1),
+        new NumberMemory(-1),
+        new VerbalMemory(-1),
+        new Chimp(-1),
+        new VisualMemory(-1),
         new Typing(),
       };
       for (var t : tests) performTest(t);
