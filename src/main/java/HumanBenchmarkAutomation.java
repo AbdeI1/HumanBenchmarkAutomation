@@ -21,8 +21,8 @@ public class HumanBenchmarkAutomation {
       driver.manage().window().maximize();
       driver.get("https://humanbenchmark.com");
       BenchmarkTest[] tests = {
+        new SequenceMemory(6),
         new ReactionTime(),
-        new SequenceMemory(),
         new AimTrainer(),
         new NumberMemory(1),
         new VerbalMemory(1),
@@ -54,6 +54,13 @@ public class HumanBenchmarkAutomation {
   }
 
   public static class SequenceMemory implements BenchmarkTest {
+    private final long max;
+    SequenceMemory() {
+      max = Long.MAX_VALUE;
+    }
+    SequenceMemory(long max_level) {
+      max = max_level;
+    }
     @Override
     public String getXpath() {
       return "//*[@href=\"/tests/sequence\"]";
@@ -65,17 +72,34 @@ public class HumanBenchmarkAutomation {
       driver.findElement(button).click();
       var wait = new FluentWait<>(driver)
         .withTimeout(Duration.ofSeconds(10))
-        .pollingEvery(Duration.ofMillis(150))
+        .pollingEvery(Duration.ofMillis(10))
         .ignoring(Exception.class);
       var activeSquare = By.xpath("//*[@data-test=\"true\"]//*[@class=\"square active\"]");
-      for (long i = 1;; i++) {
+      try {
         List<WebElement> squares = new ArrayList<>();
-        for (int j = 0; j < i; j++) {
-          wait.until(ExpectedConditions.presenceOfElementLocated(activeSquare));
-          squares.add(driver.findElement(activeSquare));
+        for (long i = 1;; i++) {
+          WebElement s1 = null, s2;
+          for (int j = 0; j < i;){
+            wait.until(ExpectedConditions.presenceOfElementLocated(activeSquare));
+            s2 = driver.findElement(activeSquare);
+            if (s1 == null || s1.getLocation().x != s2.getLocation().x || s1.getLocation().y != s2.getLocation().y)
+              j++;
+            s1 = s2;
+          }
+          squares.add(s1);
+          wait.until(ExpectedConditions.not(ExpectedConditions.presenceOfAllElementsLocatedBy(activeSquare)));
+          if (i > max) {
+            var allSquares = driver.findElements(By.xpath("//*[@data-test=\"true\"]//*[@class=\"square\"]"));
+            if (squares.get(0).getLocation().x == allSquares.get(0).getLocation().x && squares.get(0).getLocation().y == allSquares.get(0).getLocation().y)
+              new Actions(driver).moveToElement(allSquares.get(1)).click().perform();
+            else
+              new Actions(driver).moveToElement(allSquares.get(0)).click().perform();
+            break;
+          }
+          for (var s : squares) new Actions(driver).moveToElement(s).click().perform();
+          wait.until(ExpectedConditions.not(ExpectedConditions.presenceOfAllElementsLocatedBy(activeSquare)));
         }
-        for (var s : squares) new Actions(driver).moveToElement(s).click().perform();
-      }
+      } catch (Exception ignored) {}
     }
   }
 
