@@ -21,8 +21,8 @@ public class HumanBenchmarkAutomation {
       driver.manage().window().maximize();
       driver.get("https://humanbenchmark.com");
       BenchmarkTest[] tests = {
-        new SequenceMemory(),
         new ReactionTime(),
+        new SequenceMemory(),
         new AimTrainer(),
         new NumberMemory(1),
         new VerbalMemory(1),
@@ -253,6 +253,35 @@ public class HumanBenchmarkAutomation {
 
     @Override
     public void perform() {
+      quickReact();
+    }
+
+    public void quickReact() {
+      String script = """
+        let banner = document.getElementsByClassName('view-splash')[0];
+        let observer = new MutationObserver(s => {
+          if (s[0].target.classList.contains('view-go'))
+            banner.children[0].dispatchEvent(new MouseEvent('mousedown', {bubbles: true}));
+        });
+        observer.observe(banner, {attributes: true});
+       """;
+      ((JavascriptExecutor) driver).executeScript(script);
+      var banner = driver.findElement(By.className("view-splash"));
+      var clickAction = new Actions(driver).moveToElement(banner).click().build();
+      clickAction.perform();
+      var wait = new FluentWait<>(driver)
+        .withTimeout(Duration.ofSeconds(20))
+        .pollingEvery(Duration.ofMillis(2000))
+        .ignoring(Exception.class);
+      var isResult = ExpectedConditions.presenceOfElementLocated(By.className("view-result"));
+      for (int i = 0; i < 4; i++) {
+        wait.until(isResult);
+        clickAction.perform();
+      }
+      wait.until(ExpectedConditions.presenceOfElementLocated(By.className("view-score")));
+    }
+
+    public void slowReact() {
       var banner = driver.findElement(By.className("view-splash"));
       var clickAction = new Actions(driver).moveToElement(banner).click().build();
       clickAction.perform();
